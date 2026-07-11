@@ -1,6 +1,6 @@
 # vereinERP – Vereinskasse & Steuern (Kanton Aargau)
 
-Ein lokales Browser-Tool (eine einzige HTML-Datei, keine Installation, keine Cloud) für den
+Ein lokales Browser-Tool (keine Installation, kein Server, keine Cloud) für den
 Kassier: Kassenbuch mit Belegablage, Jahresrechnung für die GV inkl. Vermögensnachweis
 und Steuerberechnung nach den Regeln für Vereine.
 
@@ -10,6 +10,19 @@ und Steuerberechnung nach den Regeln für Vereine.
 2. Oben rechts **«Datenordner wählen»** klicken und einen Ordner wählen/erstellen,
    z. B. `C:\git\vereinERP\Daten`.
 3. Beim nächsten Öffnen: **«Erneut verbinden»** klicken – fertig.
+
+## Projektstruktur
+
+```
+vereinERP.html        ← Einstiegspunkt (diese Datei öffnen)
+styles.css            ← Layout
+js/basis.js           ← Konstanten, Kategorien, CSV-Logik
+js/speicher.js        ← Dateizugriff (Ordner, CSV, Belege)
+js/wiederkehrend.js   ← wiederkehrende Buchungen
+js/app.js             ← Formular, Auswertungen, Bedienung
+```
+
+Die Dateien gehören zusammen – beim Weitergeben/Verschieben immer den ganzen Ordner nehmen.
 
 ## Was das Tool anlegt
 
@@ -76,4 +89,4 @@ sinnvoll umbenannt und in der Buchung verlinkt (Klick auf 📄 öffnet den Beleg
 Alles liegt als normale Dateien im Datenordner – einfach den ganzen Ordner regelmässig
 sichern. Die CSV kann jederzeit in Excel geöffnet werden; Änderungen dort bitte nur machen,
 wenn vereinERP geschlossen ist. Für die Übergabe an den nächsten Kassier genügt es,
-den Datenordner und die `vereinERP.html` weiterzugeben.
+den Datenordner und den Programmordner (HTML + `styles.css` + `js\`) weiterzugeben.
