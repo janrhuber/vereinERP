@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="de-CH">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>vereinERP – Vereinskasse &amp; Steuern (AG)</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header>
+  <h1>verein<span>ERP</span> <span class="muted" style="font-weight:400">· Vereinskasse &amp; Steuern Aargau</span></h1>
+  <div class="spacer"></div>
+  <span id="status">Kein Datenordner verbunden</span>
+  <button id="btnFolder" class="primary">📁 Datenordner wählen</button>
+</header>
+
+<main>
+
+  <div id="startHint" class="hint">
+    <b>Erster Start:</b> Klicke oben auf «Datenordner wählen» und wähle (oder erstelle) einen Ordner,
+    z.&nbsp;B. <code>C:\git\vereinERP\Daten</code>. Dort legt das Tool die Datei <code>kassenbuch.csv</code>
+    (mit Excel öffnenbar) und den Ordner <code>Belege\&lt;Jahr&gt;\</code> für Rechnungen/Quittungen an.
+    Funktioniert in Microsoft Edge und Google Chrome. Beim nächsten Start genügt ein Klick auf «Erneut verbinden».
+  </div>
+
+  <div class="tabs no-print">
+    <button id="tabErfassen" class="active">✏️ Kassenbuch</button>
+    <button id="tabJahr">📊 Jahresrechnung (GV)</button>
+    <button id="tabSteuer">🏛️ Steuerberechnung</button>
+  </div>
+
+  <!-- ============ TAB 1: KASSENBUCH ============ -->
+  <section id="viewErfassen">
+    <div class="panel no-print">
+      <h2 id="formTitle">Neue Buchung erfassen</h2>
+      <div class="grid form">
+        <div class="col-2">
+          <label for="fDatum">Datum</label>
+          <input type="date" id="fDatum">
+        </div>
+        <div class="col-2">
+          <label for="fTyp">Typ</label>
+          <select id="fTyp">
+            <option value="E">Einnahme</option>
+            <option value="A">Ausgabe</option>
+          </select>
+        </div>
+        <div class="col-4">
+          <label for="fKategorie">Kategorie</label>
+          <select id="fKategorie"></select>
+        </div>
+        <div class="col-4">
+          <label for="fSteuer">Steuerliche Einstufung</label>
+          <select id="fSteuer"></select>
+        </div>
+        <div class="col-4">
+          <label for="fBeschreibung">Beschreibung</label>
+          <input type="text" id="fBeschreibung" placeholder="z. B. Mitgliederbeitrag Familie Muster / Getränkeeinkauf Sommerfest">
+        </div>
+        <div class="col-3">
+          <label for="fVonAn">Von / An</label>
+          <input type="text" id="fVonAn" placeholder="Zahler bzw. Empfänger">
+        </div>
+        <div class="col-2">
+          <label for="fBetrag">Betrag CHF</label>
+          <input type="number" id="fBetrag" step="0.05" min="0" placeholder="0.00">
+        </div>
+        <div class="col-3">
+          <label for="fKonto">Konto</label>
+          <select id="fKonto"></select>
+        </div>
+        <div class="col-3">
+          <label for="fWiederholung">Wiederholung</label>
+          <select id="fWiederholung">
+            <option value="X">einmalig</option>
+            <option value="M">monatlich</option>
+            <option value="Q">vierteljährlich</option>
+            <option value="H">halbjährlich</option>
+            <option value="J">jährlich</option>
+          </select>
+        </div>
+        <div class="col-3 hidden" id="fEndeWrap">
+          <label for="fEnde">Wiederholen bis (optional)</label>
+          <input type="date" id="fEnde">
+        </div>
+        <div class="col-3" id="fStatusWrap">
+          <label for="fStatus">Status</label>
+          <select id="fStatus">
+            <option value="OK">Bestätigt</option>
+            <option value="GEPLANT">Geplant (im Voraus)</option>
+          </select>
+        </div>
+        <div class="col-3"></div>
+        <div class="col-6">
+          <label>Belege (Rechnung, Quittung, Foto …)</label>
+          <button id="btnBeleg" type="button">📎 Belege anhängen</button>
+          <ul id="belegPreview" class="filelist"></ul>
+        </div>
+        <div class="col-3">
+          <label for="fNotizen">Notizen</label>
+          <input type="text" id="fNotizen" placeholder="optional">
+        </div>
+        <div class="col-3" style="text-align:right">
+          <button id="btnAbbrechen" class="hidden">Abbrechen</button>
+          <button id="btnSpeichern" class="primary">💾 Speichern</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel no-print" id="vorlagenPanel">
+      <h2>🔁 Wiederkehrende Buchungen (Vorlagen)</h2>
+      <p class="muted" style="margin-top:0">
+        Fällige Buchungen werden bis Ende Jahr automatisch als <span class="badge geplant">geplant</span>
+        ins Kassenbuch gestellt – dort nur noch mit ✔ bestätigen (und ggf. Beleg anhängen).
+        Neue Vorlage: im Formular oben bei «Wiederholung» ein Intervall wählen; das Datum gilt als erste Fälligkeit.
+      </p>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>Aktiv</th><th>Typ</th><th>Beschreibung</th><th>Von / An</th>
+            <th class="num">Betrag</th><th>Intervall</th><th>Nächste Fälligkeit</th><th>Ende</th><th></th></tr></thead>
+          <tbody id="vorlagenBody"></tbody>
+        </table>
+      </div>
+      <p id="vorlagenEmpty" class="muted">Noch keine Vorlagen.</p>
+    </div>
+
+    <div class="panel">
+      <div class="flexrow no-print" style="margin-bottom:0.8rem">
+        <div>
+          <label for="filterJahr">Jahr filtern</label>
+          <select id="filterJahr"><option value="">Alle Jahre</option></select>
+        </div>
+        <div>
+          <label for="filterTyp">Typ</label>
+          <select id="filterTyp">
+            <option value="">Alle</option>
+            <option value="E">Einnahmen</option>
+            <option value="A">Ausgaben</option>
+          </select>
+        </div>
+        <div>
+          <label for="filterStatus">Status</label>
+          <select id="filterStatus">
+            <option value="">Alle</option>
+            <option value="OK">Bestätigt</option>
+            <option value="GEPLANT">Geplant</option>
+          </select>
+        </div>
+        <div style="flex:1">
+          <label for="filterText">Suche</label>
+          <input type="text" id="filterText" placeholder="Beschreibung, Von/An, Notizen …">
+        </div>
+        <div>
+          <button id="btnExcel" title="kassenbuch.csv im Datenordner – direkt mit Excel öffnenbar">📄 CSV-Info</button>
+        </div>
+      </div>
+      <div style="overflow-x:auto">
+        <table id="listTable">
+          <thead>
+            <tr>
+              <th>Datum</th><th>Beschreibung</th><th>Von / An</th><th>Kategorie</th>
+              <th>Steuerlich</th><th>Konto</th><th class="num">Einnahme</th><th class="num">Ausgabe</th>
+              <th>Belege</th><th class="no-print"></th>
+            </tr>
+          </thead>
+          <tbody id="listBody"></tbody>
+          <tfoot>
+            <tr><th colspan="6" style="text-align:right">Total (Filter)</th>
+                <th class="num" id="sumE"></th><th class="num" id="sumA"></th><th colspan="2"></th></tr>
+          </tfoot>
+        </table>
+      </div>
+      <p id="emptyMsg" class="muted">Noch keine Buchungen.</p>
+    </div>
+  </section>
+
+  <!-- ============ TAB 2: JAHRESRECHNUNG ============ -->
+  <section id="viewJahr" class="hidden">
+    <div class="panel">
+      <div class="flexrow no-print" style="margin-bottom:1rem">
+        <div>
+          <label for="jahrSelect">Vereinsjahr</label>
+          <select id="jahrSelect"></select>
+        </div>
+        <div style="flex:1">
+          <label for="vereinName">Vereinsname (für Ausdruck)</label>
+          <input type="text" id="vereinName" placeholder="z. B. Turnverein Musterdorf">
+        </div>
+        <div><button id="btnPrintJahr" class="primary">🖨️ Drucken / PDF</button></div>
+      </div>
+
+      <h2 id="jahrTitel">Jahresrechnung</h2>
+      <div class="kpis">
+        <div class="kpi green"><div class="l">Total Einnahmen</div><div class="v" id="kEin">–</div></div>
+        <div class="kpi red"><div class="l">Total Ausgaben</div><div class="v" id="kAus">–</div></div>
+        <div class="kpi purple"><div class="l">Ergebnis</div><div class="v" id="kErgebnis">–</div></div>
+      </div>
+      <p id="jahrGeplantHint" class="muted hidden"></p>
+
+      <div class="grid" style="grid-template-columns:1fr 1fr; gap:1.5rem">
+        <div style="min-width:0">
+          <h3>Einnahmen nach Kategorie</h3>
+          <table><tbody id="einKat"></tbody>
+            <tfoot><tr><th style="text-align:right">Total Einnahmen</th><th class="num" id="einKatTotal"></th></tr></tfoot>
+          </table>
+        </div>
+        <div style="min-width:0">
+          <h3>Ausgaben nach Kategorie</h3>
+          <table><tbody id="ausKat"></tbody>
+            <tfoot><tr><th style="text-align:right">Total Ausgaben</th><th class="num" id="ausKatTotal"></th></tr></tfoot>
+          </table>
+        </div>
+      </div>
+
+      <h3>Vermögensnachweis</h3>
+      <p class="muted no-print">Anfangsbestand und effektiven Endbestand (Kontoauszug / Kassensturz) eintragen – Differenzen werden sofort sichtbar.</p>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr><th>Konto</th><th class="num">Anfangsbestand</th><th class="num">+ Einnahmen</th>
+                <th class="num">− Ausgaben</th><th class="num">= Endbestand (Soll)</th>
+                <th class="num">Endbestand (Ist)</th><th class="num">Differenz</th></tr>
+          </thead>
+          <tbody id="vermoegenBody"></tbody>
+          <tfoot><tr id="vermoegenFoot"></tr></tfoot>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TAB 3: STEUER ============ -->
+  <section id="viewSteuer" class="hidden">
+    <div class="panel">
+      <div class="flexrow no-print" style="margin-bottom:1rem">
+        <div>
+          <label for="steuerJahr">Steuerjahr</label>
+          <select id="steuerJahr"></select>
+        </div>
+        <div>
+          <label for="freigrenze">Freigrenze Gewinn CHF (ideelle Zwecke)</label>
+          <input type="number" id="freigrenze" step="1000" min="0">
+        </div>
+        <div><button id="btnPrintSteuer" class="primary">🖨️ Drucken / PDF</button></div>
+      </div>
+
+      <h2 id="steuerTitel">Steuerberechnung Verein</h2>
+      <p class="muted">
+        Berechnung nach Art. 66 DBG / § 74 StG AG: Mitgliederbeiträge sind kein steuerbarer Ertrag.
+        Aufwendungen, die direkt der Erzielung steuerbarer Erträge dienen, sind voll abziehbar;
+        übrige Aufwendungen nur soweit sie die Mitgliederbeiträge übersteigen.
+      </p>
+      <p id="steuerGeplantHint" class="muted hidden"></p>
+
+      <table class="calc" style="max-width:750px">
+        <tbody id="calcBody"></tbody>
+      </table>
+
+      <div id="steuerVerdict" class="verdict"></div>
+
+      <h3>Steuerbare Erträge im Detail</h3>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>Datum</th><th>Beschreibung</th><th>Kategorie</th><th class="num">Betrag CHF</th><th>Beleg</th></tr></thead>
+          <tbody id="steuerErtragBody"></tbody>
+        </table>
+      </div>
+
+      <h3>Direkt zuordenbare Aufwendungen im Detail</h3>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>Datum</th><th>Beschreibung</th><th>Kategorie</th><th class="num">Betrag CHF</th><th>Beleg</th></tr></thead>
+          <tbody id="steuerDirektBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script src="js/basis.js"></script>
+<script src="js/speicher.js"></script>
+<script src="js/wiederkehrend.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
