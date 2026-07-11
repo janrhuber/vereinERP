@@ -61,6 +61,11 @@ sinnvoll umbenannt und in der Buchung verlinkt (Klick auf 📄 öffnet den Beleg
 
 ## Steuerliche Kurzübersicht für Vereine (ohne Gewähr)
 
+> **Hinweis:** Dieses Tool ersetzt keine Steuerberatung. Massgebend sind die aktuellen
+> Gesetze und die Praxis des Kantonalen Steueramts Aargau bzw. der Gemeinde. Sätze und
+> Regeln können ändern – im Zweifel dort nachfragen oder eine Fachperson beiziehen.
+> Für die Richtigkeit der Berechnungen wird keine Haftung übernommen.
+
 - **Mitgliederbeiträge** sind **kein steuerbarer Ertrag** (Art. 66 Abs. 1 DBG).
 - **Spenden, Schenkungen und Legate** sind für die Gewinnsteuer ebenfalls steuerfrei
   (Kapitalzuwachs, Art. 60 lit. c DBG).
@@ -90,3 +95,7 @@ Alles liegt als normale Dateien im Datenordner – einfach den ganzen Ordner reg
 sichern. Die CSV kann jederzeit in Excel geöffnet werden; Änderungen dort bitte nur machen,
 wenn vereinERP geschlossen ist. Für die Übergabe an den nächsten Kassier genügt es,
 den Datenordner und den Programmordner (HTML + `styles.css` + `js\`) weiterzugeben.
+
+## Lizenz
+
+MIT – siehe [LICENSE](LICENSE). Nutzung auf eigene Verantwortung.
