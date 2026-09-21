@@ -1,25 +1,57 @@
 # vereinERP – Vereinskasse & Steuern (Kanton Aargau)
 
-Ein lokales Browser-Tool (keine Installation, kein Server, keine Cloud) für den
-Kassier: Kassenbuch mit Belegablage, Jahresrechnung für die GV inkl. Vermögensnachweis
-und Steuerberechnung nach den Regeln für Vereine.
+Ein Browser-Tool für den Kassier: Kassenbuch mit Belegablage, Jahresrechnung für die GV
+inkl. Vermögensnachweis und Steuerberechnung nach den Regeln für Vereine.
 
-## Start
+Läuft in **zwei Modi** – die App erkennt beim Start automatisch, welcher aktiv ist:
+
+- **Ordner-Modus** (wie bisher): `vereinERP.html` lokal öffnen, Daten liegen in einem
+  selbst gewählten Ordner. Kein Server, keine Cloud.
+- **Server-Modus** (neu): dieselbe App, ausgeliefert vom mitgelieferten Node.js-Backend
+  (`server/`). Daten liegen zentral auf dem Server, Login mit Benutzername/Passwort,
+  funktioniert auch am Handy (Beleg-Fotos direkt mit der Kamera). Vereinsmitglieder
+  können Rechnungen in einen **Eingang** hochladen, die der Kassier prüft, als geplante
+  Buchung übernimmt und nach Zahlung bestätigt.
+
+## Start (Ordner-Modus)
 
 1. `vereinERP.html` mit **Microsoft Edge** oder **Google Chrome** öffnen (Doppelklick genügt).
 2. Oben rechts **«Datenordner wählen»** klicken und einen Ordner wählen/erstellen,
    z. B. `C:\git\vereinERP\Daten`.
 3. Beim nächsten Öffnen: **«Erneut verbinden»** klicken – fertig.
 
+## Start (Server-Modus)
+
+```bash
+cd server && npm install          # einmalig
+node server/index.js              # vom Repo-Root aus; App unter http://localhost:3000
+```
+
+- **Benutzer anlegen:** `node server/benutzer-cli.js add <Name> kassier` bzw. `… mitglied`
+  (auch `passwort`, `entfernen`, `liste`). Rolle *kassier* sieht alles, *mitglied* nur den Eingang.
+- **Umgebungsvariablen:** `PORT` (Default 3000), `DATEN_DIR` (Default `./daten`, in Produktion
+  z. B. `/var/lib/vereinerp/daten` – ausserhalb des Git-Checkouts!), `NODE_ENV=production`
+  aktiviert Secure-Cookies (TLS terminiert der Reverse-Proxy davor).
+- **Sicherheit:** bcrypt-Passwörter, Sessions (überleben Neustarts), Rate-Limit fürs Login,
+  Upload-Whitelist (PDF/JPG/PNG/HEIC/WEBP, max. 10 MB), Path-Traversal-Schutz. Der Server
+  gehört hinter einen HTTPS-Reverse-Proxy und ist nicht für den Direktbetrieb im Internet gedacht.
+- **Datenformat ist in beiden Modi identisch** – ein bestehender Datenordner kann 1:1 nach
+  `DATEN_DIR` kopiert werden (und zurück).
+
 ## Projektstruktur
 
 ```
-vereinERP.html        ← Einstiegspunkt (diese Datei öffnen)
-styles.css            ← Layout
-js/basis.js           ← Konstanten, Kategorien, CSV-Logik
-js/speicher.js        ← Dateizugriff (Ordner, CSV, Belege)
-js/wiederkehrend.js   ← wiederkehrende Buchungen
-js/app.js             ← Formular, Auswertungen, Bedienung
+vereinERP.html          ← Einstiegspunkt (lokal öffnen oder vom Server ausgeliefert)
+styles.css              ← Layout
+js/basis.js             ← Konstanten, Kategorien, CSV-Logik, Modus-Zustand
+js/speicher.js          ← Dateizugriff Ordner-Modus (File System Access API)
+js/speicher-server.js   ← Dateizugriff Server-Modus (fetch gegen /api/…)
+js/anmeldung.js         ← Login & Rollen (nur Server-Modus)
+js/wiederkehrend.js     ← wiederkehrende Buchungen, Beleg-Ablage
+js/eingang.js           ← Rechnungs-Eingang (nur Server-Modus)
+js/app.js               ← Formular, Auswertungen, Bedienung, Modus-Erkennung
+server/                 ← Node.js/Express-Backend (index.js, auth, daten, belege, eingang)
+server/benutzer-cli.js  ← Benutzerverwaltung (add/passwort/entfernen/liste)
 ```
 
 Die Dateien gehören zusammen – beim Weitergeben/Verschieben immer den ganzen Ordner nehmen.
@@ -33,15 +65,34 @@ Daten\
 └── Belege\
     ├── 2025\
     └── 2026\
+        └── 260712_Sommerfest_Getraenke_Volg_Rechnung.pdf
 ```
 
 Angehängte Rechnungen/Quittungen werden automatisch nach `Belege\<Jahr>\` **kopiert**,
-sinnvoll umbenannt und in der Buchung verlinkt (Klick auf 📄 öffnet den Beleg).
+einheitlich umbenannt und in der Buchung verlinkt (Klick auf 📄 öffnet den Beleg).
+Namensschema: `JJMMTT_Beschreibung_VonAn[_Typ]` – Datum aus der Buchung, Typ
+(Rechnung/Quittung/Lieferschein/…) wird aus dem Original-Dateinamen übernommen, falls
+erkennbar; bei Namenskonflikten wird `_2`, `_3` … angehängt. Identisch in Ordner- und
+Server-Modus (server/hilfen.js bildet dieselbe Logik in Node.js nach).
 
 ## Funktionen
 
 - **Kassenbuch:** Einnahmen und Ausgaben mit Datum, Kategorie, Von/An, Konto
-  (Kasse / Bank / PostFinance), Belegen und Notizen. Filter nach Jahr, Typ und Volltext.
+  (Kasse / Bank / PostFinance), Belegen und Notizen. Filter nach Jahr, Typ, Status,
+  **Steuerlicher Einstufung**, Kategorie, Konto und Volltext – Total (Filter) steht
+  unter der Liste.
+- **Kontostand:** Oben im Kassenbuch-Tab immer sichtbar – frühester erfasster
+  Anfangsbestand (aus der Jahresrechnung) plus alle bestätigten Einnahmen/Ausgaben
+  seither, pro Konto und als Total. **Buchungen mit künftigem Datum zählen erst am
+  Fälligkeitstag** – auch wenn sie schon als «Bestätigt» erfasst sind (z. B. ein
+  vordatierter Dauerauftrag). Mit dem Datumsfeld lässt sich der Kontostand an
+  einem **beliebigen vergangenen Tag** nachschlagen, oder – bei einem künftigen
+  Datum – eine **Prognose** einsehen (heutiger Stand + bereits erfasste künftige
+  und geplante Buchungen bis dahin), optisch abgesetzt (gestrichelt/kursiv).
+- **Verlauf:** Chart darunter zeigt den kumulierten Kontostand pro Konto über die
+  Zeit – durchgezogen bis heute, gestrichelt als Prognose bis zur letztesten
+  erfassten künftigen/geplanten Buchung. Maus über die Linie zeigt Datum und
+  Werte aller Konten.
 - **Steuerliche Einstufung pro Buchung** (Kategorie setzt den Vorschlag, übersteuerbar):
   - Einnahmen: *Mitgliederbeitrag (steuerfrei)* · *Spende/Schenkung (steuerfrei)* · *steuerbarer Ertrag*
   - Ausgaben: *direkt für steuerbare Erträge (voll abziehbar)* · *übrige Vereinsausgabe*
@@ -91,10 +142,15 @@ sinnvoll umbenannt und in der Buchung verlinkt (Klick auf 📄 öffnet den Beleg
 
 ## Datensicherung
 
-Alles liegt als normale Dateien im Datenordner – einfach den ganzen Ordner regelmässig
-sichern. Die CSV kann jederzeit in Excel geöffnet werden; Änderungen dort bitte nur machen,
-wenn vereinERP geschlossen ist. Für die Übergabe an den nächsten Kassier genügt es,
-den Datenordner und den Programmordner (HTML + `styles.css` + `js\`) weiterzugeben.
+Alles liegt als normale Dateien im Datenordner (bzw. in `DATEN_DIR` auf dem Server) –
+einfach den ganzen Ordner regelmässig sichern. Die CSV kann jederzeit in Excel geöffnet
+werden; Änderungen dort bitte nur machen, wenn vereinERP geschlossen ist. Für die Übergabe
+an den nächsten Kassier genügt es, den Datenordner und den Programmordner weiterzugeben.
+
+Hinweise Server-Modus: HEIC-Fotos (iPhone) werden gespeichert und verlinkt, im
+Desktop-Browser aber meist heruntergeladen statt angezeigt. Arbeiten zwei offene Fenster
+gleichzeitig am Kassenbuch, gewinnt das erste – das zweite bekommt beim Speichern eine
+Konfliktmeldung und muss neu laden (bewusst einfach gehalten, es gibt einen Kassier).
 
 ## Lizenz
 

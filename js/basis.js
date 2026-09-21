@@ -53,6 +53,10 @@ let editId = null;
 let editVorlageId = null;
 let pendingFiles = [];
 let pendingExisting = [];
+let serverModus = false;     // true = App läuft gegen das Server-Backend statt lokalem Ordner
+let currentUser = null;      // { name, rolle } nach Login (nur Server-Modus)
+let csvEtag = null;          // ETag der zuletzt gelesenen kassenbuch.csv (Schutz vor verlorenen Updates)
+let aktiveEingangId = null;  // Eingang-Posten, der gerade in eine Buchung umgewandelt wird
 
 /* ================= Hilfsfunktionen ================= */
 const $ = id => document.getElementById(id);
@@ -64,6 +68,15 @@ function setStatus(msg, cls) {
   const s = $("status");
   s.textContent = msg;
   s.className = cls || "";
+}
+
+/* Verbindungs-Status unabhängig vom Speicher-Modus (Ordner oder Server) */
+function istVerbunden() {
+  return serverModus ? !!currentUser : !!dirHandle;
+}
+
+function speicherName() {
+  return serverModus ? "Server" : dirHandle.name;
 }
 
 function sanitizeFilename(s) {

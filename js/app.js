@@ -46,6 +46,11 @@ function initForm() {
     $("fSteuer").value = kategorienFuerTyp()[$("fKategorie").value].code;
   };
   $("fWiederholung").onchange = wiederholungChanged;
+  $("belegInput").onchange = () => {
+    pendingFiles.push(...$("belegInput").files);
+    renderBelegPreview();
+    $("belegInput").value = ""; // gleiche Datei erneut wählbar
+  };
 }
 
 function renderBelegPreview() {
@@ -74,7 +79,12 @@ function renderBelegPreview() {
 }
 
 async function pickReceipts() {
-  if (!dirHandle) { alert("Bitte zuerst den Datenordner verbinden."); return; }
+  if (!istVerbunden()) {
+    alert(serverModus ? "Bitte zuerst anmelden." : "Bitte zuerst den Datenordner verbinden.");
+    return;
+  }
+  // Server-Modus / Handy: normaler Datei-Dialog (bietet dort auch Kamera & Galerie an)
+  if (serverModus || !window.showOpenFilePicker) { $("belegInput").click(); return; }
   try {
     const handles = await window.showOpenFilePicker({ multiple: true });
     for (const h of handles) pendingFiles.push(await h.getFile());
@@ -85,6 +95,7 @@ async function pickReceipts() {
 function resetForm() {
   editId = null;
   editVorlageId = null;
+  aktiveEingangId = null; // Abbrechen verwirft eine laufende Eingang-Übernahme
   pendingFiles = []; pendingExisting = [];
   $("formTitle").textContent = "Neue Buchung erfassen";
   $("btnAbbrechen").classList.add("hidden");
@@ -127,7 +138,10 @@ function startEdit(id) {
 }
 
 async function saveEntry() {
-  if (!dirHandle) { alert("Bitte zuerst den Datenordner verbinden."); return; }
+  if (!istVerbunden()) {
+    alert(serverModus ? "Bitte zuerst anmelden." : "Bitte zuerst den Datenordner verbinden.");
+    return;
+  }
   const datum = $("fDatum").value;
   const beschreibung = $("fBeschreibung").value.trim();
   const betrag = parseFloat($("fBetrag").value);
@@ -170,8 +184,9 @@ async function saveEntry() {
   }
 
   const jahr = parseInt(datum.slice(0, 4));
+  const vonAn = $("fVonAn").value.trim();
   const belege = [...pendingExisting];
-  for (const f of pendingFiles) belege.push(await storeReceipt(f, jahr, beschreibung));
+  for (const f of pendingFiles) belege.push(await storeReceipt(f, jahr, datum, beschreibung, vonAn));
 
   const alt = editId ? entries.find(x => x.id === editId) : null;
   const obj = {
@@ -195,6 +210,20 @@ async function saveEntry() {
   } else entries.push(obj);
   entries.sort((a, b) => a.datum < b.datum ? -1 : 1);
   await saveCSV();
+  if (aktiveEingangId) { // Buchung stammt aus dem Eingang → Posten als erledigt markieren
+    const egId = aktiveEingangId;
+    aktiveEingangId = null;
+    try {
+      await apiFetch("/api/eingang/" + encodeURIComponent(egId) + "/erledigt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ buchungId: obj.id }),
+      });
+    } catch (e) {
+      alert("Buchung gespeichert, aber der Eingang-Posten konnte nicht als erledigt markiert werden: " + e.message);
+    }
+    ladeEingang();
+  }
   resetForm();
   renderAll();
 }
@@ -219,6 +248,9 @@ function renderList() {
   const jahrF = $("filterJahr").value;
   const typF = $("filterTyp").value;
   const statusF = $("filterStatus").value;
+  const steuerF = $("filterSteuer").value;
+  const katF = $("filterKategorie").value;
+  const kontoF = $("filterKonto").value;
   const txt = $("filterText").value.toLowerCase();
   const body = $("listBody");
   body.innerHTML = "";
@@ -227,6 +259,9 @@ function renderList() {
     if (jahrF && String(e.jahr) !== jahrF) continue;
     if (typF && e.typ !== typF) continue;
     if (statusF && e.status !== statusF) continue;
+    if (steuerF && e.steuer !== steuerF) continue;
+    if (katF && e.kategorie !== katF) continue;
+    if (kontoF && e.konto !== kontoF) continue;
     if (txt && !(e.beschreibung + " " + e.vonAn + " " + e.notizen + " " + e.kategorie).toLowerCase().includes(txt)) continue;
     shown++;
     const geplant = e.status === "GEPLANT";
@@ -254,6 +289,134 @@ function renderList() {
   $("sumA").innerHTML = chf(sumA) + (sumAg ? '<br><span class="muted">+ ' + chf(sumAg) + " geplant</span>" : "");
   $("emptyMsg").classList.toggle("hidden", shown > 0);
   $("emptyMsg").textContent = entries.length ? "Keine Buchungen für diesen Filter." : "Noch keine Buchungen.";
+}
+
+/* Kategorie-, Steuer- und Konto-Filter füllen (Auswahl bleibt erhalten) */
+function fillFilterSelects() {
+  const kats = KATEGORIEN_E.concat(KATEGORIEN_A).map(k => k.name);
+  for (const e of entries) if (e.kategorie && !kats.includes(e.kategorie)) kats.push(e.kategorie);
+  const selK = $("filterKategorie");
+  const prevK = selK.value;
+  selK.innerHTML = '<option value="">Alle</option>';
+  kats.forEach(n => {
+    const o = document.createElement("option");
+    o.value = n; o.textContent = n;
+    selK.appendChild(o);
+  });
+  if (prevK && [...selK.options].some(o => o.value === prevK)) selK.value = prevK;
+
+  const selS = $("filterSteuer");
+  const prevS = selS.value;
+  selS.innerHTML = '<option value="">Alle</option>';
+  STEUER_E.concat(STEUER_A).forEach(s => {
+    const o = document.createElement("option");
+    o.value = s.code; o.textContent = s.label;
+    selS.appendChild(o);
+  });
+  if (prevS && [...selS.options].some(o => o.value === prevS)) selS.value = prevS;
+
+  const selKo = $("filterKonto");
+  const prevKo = selKo.value;
+  selKo.innerHTML = '<option value="">Alle</option>';
+  KONTEN.forEach(k => {
+    const o = document.createElement("option");
+    o.value = k; o.textContent = k;
+    selKo.appendChild(o);
+  });
+  if (prevKo && [...selKo.options].some(o => o.value === prevKo)) selKo.value = prevKo;
+}
+
+/* ================= Kontostand (Kassenbuch-Tab) ================= */
+/* Frühester erfasster Anfangsbestand pro Konto (aus dem Vermögensnachweis) */
+function kontostandStartwerte() {
+  const jahre = Object.keys(settings.konten).map(Number).sort((a, b) => a - b);
+  const start = {};
+  KONTEN.forEach(k => {
+    let anfang = 0;
+    for (const j of jahre) {
+      const cfg = settings.konten[j] && settings.konten[j][k];
+      if (cfg && cfg.anfang !== undefined && cfg.anfang !== "") { anfang = parseFloat(cfg.anfang) || 0; break; }
+    }
+    start[k] = anfang;
+  });
+  return start;
+}
+
+/* Effektiver Kontostand an einem Stichtag. Zukünftig datierte Buchungen zählen NIE mit,
+   auch wenn sie bereits als «Bestätigt» erfasst sind – erst am Fälligkeitstag. */
+function kontostandStandAm(datum) {
+  const heute = todayISO();
+  const bis = datum && datum < heute ? datum : heute;
+  const stand = kontostandStartwerte();
+  for (const e of entries) {
+    if (e.status === "GEPLANT" || e.datum > bis) continue;
+    const k = KONTEN.includes(e.konto) ? e.konto : KONTEN[KONTEN.length - 1];
+    stand[k] += e.typ === "E" ? e.betrag : -e.betrag;
+  }
+  return stand;
+}
+
+/* Künftige Buchungen (bestätigt mit Datum in der Zukunft ODER noch geplant) –
+   im Kontostand oben noch nicht enthalten, bis Fälligkeitstag oder Bestätigung. */
+function kuenftigeBuchungen(bisDatum) {
+  const heute = todayISO();
+  const liste = entries
+    .filter(e => e.status === "GEPLANT" || (e.status === "OK" && e.datum > heute))
+    .filter(e => !bisDatum || e.datum <= bisDatum)
+    .sort((a, b) => a.datum < b.datum ? -1 : 1);
+  const delta = {};
+  KONTEN.forEach(k => delta[k] = 0);
+  for (const e of liste) {
+    const k = KONTEN.includes(e.konto) ? e.konto : KONTEN[KONTEN.length - 1];
+    delta[k] += e.typ === "E" ? e.betrag : -e.betrag;
+  }
+  return { anzahl: liste.length, delta, liste };
+}
+
+/* Prognose per künftigem Stichtag = heutiger effektiver Stand + künftige Buchungen bis dahin */
+function kontostandPrognose(datum) {
+  const heute = kontostandStandAm(todayISO());
+  const { delta } = kuenftigeBuchungen(datum);
+  const res = {};
+  KONTEN.forEach(k => res[k] = heute[k] + delta[k]);
+  return res;
+}
+
+function kontostandKpiHtml(stand, cls) {
+  const total = KONTEN.reduce((s, k) => s + stand[k], 0);
+  return KONTEN.map(k =>
+    `<div class="kpi ${cls}"><div class="l">${escapeHtml(k)}</div><div class="v">CHF ${chf(stand[k])}</div></div>`
+  ).join("") + `<div class="kpi ${cls === "prognose" ? "prognose" : "purple"}">` +
+    `<div class="l">Total${cls === "prognose" ? " (prognostiziert)" : ""}</div><div class="v">CHF ${chf(total)}</div></div>`;
+}
+
+function renderKontostand() {
+  const heute = todayISO();
+  const gewaehlt = $("kontostandDatum").value || heute;
+  const el = $("kontostandKpis");
+
+  if (gewaehlt <= heute) {
+    $("kontostandLabel").textContent = gewaehlt === heute ? "💰 Kontostand heute" : "💰 Kontostand am " + gewaehlt;
+    el.innerHTML = kontostandKpiHtml(kontostandStandAm(gewaehlt), "blue");
+  } else {
+    $("kontostandLabel").textContent = "💰 Kontostand heute · Prognose per " + gewaehlt;
+    el.innerHTML = kontostandKpiHtml(kontostandStandAm(heute), "blue") +
+      kontostandKpiHtml(kontostandPrognose(gewaehlt), "prognose");
+  }
+
+  const { anzahl, delta } = kuenftigeBuchungen();
+  const hint = $("kontostandHinweis");
+  if (anzahl > 0) {
+    const summe = KONTEN.reduce((s, k) => s + delta[k], 0);
+    hint.classList.remove("hidden");
+    hint.textContent = `ℹ ${anzahl} künftige Buchung${anzahl === 1 ? "" : "en"} (bestätigt mit künftigem Datum ` +
+      `oder noch geplant, netto CHF ${chf(summe)}) sind im Kontostand oben noch nicht enthalten. ` +
+      `Für eine Prognose oben ein künftiges Datum wählen.`;
+  } else {
+    hint.classList.add("hidden");
+  }
+
+  if (typeof renderVerlaufChart === "function") renderVerlaufChart();
 }
 
 function fillYearSelects() {
@@ -371,6 +534,7 @@ async function vermoegenInput(el) {
   cfg[el.dataset.verm] = el.value;
   await saveSettings();
   renderJahr();
+  renderKontostand();
 }
 
 /* ================= Rendering: Steuer ================= */
@@ -458,6 +622,8 @@ function renderSteuer() {
 
 function renderAll() {
   fillYearSelects();
+  fillFilterSelects();
+  renderKontostand();
   renderVorlagen();
   renderList();
   renderJahr();
@@ -466,7 +632,7 @@ function renderAll() {
 
 /* ================= Tabs & Events ================= */
 function showTab(name) {
-  for (const t of ["Erfassen", "Jahr", "Steuer"]) {
+  for (const t of ["Erfassen", "Jahr", "Steuer", "Eingang"]) {
     $("view" + t).classList.toggle("hidden", t !== name);
     $("tab" + t).classList.toggle("active", t === name);
   }
@@ -489,21 +655,21 @@ document.addEventListener("change", ev => {
   else if (ev.target.dataset.vaktiv) toggleVorlage(ev.target.dataset.vaktiv, ev.target.checked);
 });
 
-window.addEventListener("DOMContentLoaded", () => {
-  if (!window.showDirectoryPicker) {
-    $("startHint").innerHTML = "<b>⚠ Browser nicht unterstützt.</b> Bitte diese Datei mit <b>Microsoft Edge</b> oder <b>Google Chrome</b> öffnen (Firefox unterstützt den lokalen Dateizugriff nicht).";
-    $("btnFolder").disabled = true;
-    return;
-  }
+function wireCommonUI() {
   initForm();
-  $("btnFolder").onclick = chooseFolder;
   $("btnSpeichern").onclick = saveEntry;
   $("btnAbbrechen").onclick = () => resetForm();
   $("btnBeleg").onclick = pickReceipts;
   $("filterJahr").onchange = renderList;
   $("filterTyp").onchange = renderList;
   $("filterStatus").onchange = renderList;
+  $("filterSteuer").onchange = renderList;
+  $("filterKategorie").onchange = renderList;
+  $("filterKonto").onchange = renderList;
   $("filterText").oninput = renderList;
+  $("kontostandDatum").value = todayISO();
+  $("kontostandDatum").onchange = renderKontostand;
+  $("btnKontostandHeute").onclick = () => { $("kontostandDatum").value = todayISO(); renderKontostand(); };
   $("tabErfassen").onclick = () => showTab("Erfassen");
   $("tabJahr").onclick = () => { showTab("Jahr"); renderJahr(); };
   $("tabSteuer").onclick = () => { showTab("Steuer"); renderSteuer(); };
@@ -519,6 +685,15 @@ window.addEventListener("DOMContentLoaded", () => {
   };
   $("btnPrintJahr").onclick = () => window.print();
   $("btnPrintSteuer").onclick = () => window.print();
+}
+
+function startFolderMode() {
+  if (!window.showDirectoryPicker) {
+    $("startHint").innerHTML = "<b>⚠ Browser nicht unterstützt.</b> Bitte diese Datei mit <b>Microsoft Edge</b> oder <b>Google Chrome</b> öffnen (Firefox unterstützt den lokalen Dateizugriff nicht).";
+    $("btnFolder").disabled = true;
+    return;
+  }
+  $("btnFolder").onclick = chooseFolder;
   $("btnExcel").onclick = () => alert(
     "Die Daten liegen als «" + CSV_NAME + "» im Datenordner.\n\n" +
     "• Trennzeichen: Semikolon (Schweizer Excel öffnet sie per Doppelklick korrekt)\n" +
@@ -526,4 +701,32 @@ window.addEventListener("DOMContentLoaded", () => {
     "Tipp: Excel-Änderungen nur bei geschlossenem vereinERP machen und danach hier neu verbinden."
   );
   tryReconnect();
+}
+
+function startServerMode(st) {
+  serverModus = true;
+  $("btnFolder").classList.add("hidden");
+  $("btnExcel").classList.add("hidden");
+  $("startHint").classList.add("hidden");
+  $("loginForm").onsubmit = login;
+  $("btnLogout").onclick = logout;
+  initEingangUI();
+  if (st.angemeldet && st.benutzer) anmeldungErfolgreich(st.benutzer);
+  else zeigeLogin();
+}
+
+window.addEventListener("DOMContentLoaded", async () => {
+  wireCommonUI();
+  // Modus-Erkennung: antwortet ein Backend auf /api/status, läuft die App im Server-Modus,
+  // sonst (file://, statisches Hosting) wie bisher im Ordner-Modus.
+  let st = null;
+  try {
+    const r = await fetch("/api/status");
+    if (r.ok) {
+      const j = await r.json();
+      if (j && j.server === true) st = j;
+    }
+  } catch {}
+  if (st) startServerMode(st);
+  else startFolderMode();
 });

@@ -13,6 +13,7 @@
   <div class="spacer"></div>
   <span id="status">Kein Datenordner verbunden</span>
   <button id="btnFolder" class="primary">📁 Datenordner wählen</button>
+  <button id="btnLogout" class="hidden">🚪 Abmelden</button>
 </header>
 
 <main>
@@ -24,14 +25,64 @@
     Funktioniert in Microsoft Edge und Google Chrome. Beim nächsten Start genügt ein Klick auf «Erneut verbinden».
   </div>
 
+  <!-- ============ LOGIN (nur Server-Modus) ============ -->
+  <section id="viewLogin" class="hidden">
+    <div class="panel" style="max-width:420px;margin:2rem auto">
+      <h2>🔐 Anmelden</h2>
+      <form id="loginForm">
+        <div class="grid form" style="grid-template-columns:1fr">
+          <div>
+            <label for="loginName">Name</label>
+            <input type="text" id="loginName" autocomplete="username" required>
+          </div>
+          <div>
+            <label for="loginPasswort">Passwort</label>
+            <input type="password" id="loginPasswort" autocomplete="current-password" required>
+          </div>
+          <div id="loginFehler" style="color:var(--red)"></div>
+          <div style="text-align:right">
+            <button type="submit" class="primary">Anmelden</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </section>
+
   <div class="tabs no-print">
     <button id="tabErfassen" class="active">✏️ Kassenbuch</button>
     <button id="tabJahr">📊 Jahresrechnung (GV)</button>
     <button id="tabSteuer">🏛️ Steuerberechnung</button>
+    <button id="tabEingang" class="hidden">📥 Eingang</button>
   </div>
 
   <!-- ============ TAB 1: KASSENBUCH ============ -->
   <section id="viewErfassen">
+    <div class="panel">
+      <div class="flexrow no-print" style="margin-bottom:0.4rem; align-items:center">
+        <h2 id="kontostandLabel" style="margin:0">💰 Kontostand heute</h2>
+        <div class="spacer"></div>
+        <div>
+          <label for="kontostandDatum">Stand am / Prognose per</label>
+          <input type="date" id="kontostandDatum">
+        </div>
+        <div><button id="btnKontostandHeute" type="button" class="small">Heute</button></div>
+      </div>
+      <p class="muted" style="margin-top:0">
+        Frühester erfasster Anfangsbestand (Jahresrechnung → Vermögensnachweis) plus alle
+        bestätigten, bereits fälligen Einnahmen/Ausgaben. Buchungen mit künftigem Datum zählen
+        erst am Fälligkeitstag – oben ein künftiges Datum wählen zeigt stattdessen eine Prognose.
+      </p>
+      <div class="kpis" id="kontostandKpis"></div>
+      <p id="kontostandHinweis" class="muted hidden" style="margin-top:0.6rem"></p>
+
+      <h3 style="margin-top:1.4rem">📈 Verlauf</h3>
+      <p class="muted" style="margin-top:0">
+        Durchgezogen: effektiver Verlauf. Gestrichelt ab heute: Prognose aus bereits
+        erfassten künftigen und geplanten Buchungen.
+      </p>
+      <div id="verlaufChart"></div>
+    </div>
+
     <div class="panel no-print">
       <h2 id="formTitle">Neue Buchung erfassen</h2>
       <div class="grid form">
@@ -95,6 +146,8 @@
         <div class="col-6">
           <label>Belege (Rechnung, Quittung, Foto …)</label>
           <button id="btnBeleg" type="button">📎 Belege anhängen</button>
+          <!-- Server-Modus/Handy: normaler Datei-Dialog; bewusst ohne capture → Kamera UND Galerie -->
+          <input type="file" id="belegInput" class="hidden" multiple accept="application/pdf,image/*,.heic,.heif">
           <ul id="belegPreview" class="filelist"></ul>
         </div>
         <div class="col-3">
@@ -115,7 +168,7 @@
         ins Kassenbuch gestellt – dort nur noch mit ✔ bestätigen (und ggf. Beleg anhängen).
         Neue Vorlage: im Formular oben bei «Wiederholung» ein Intervall wählen; das Datum gilt als erste Fälligkeit.
       </p>
-      <div style="overflow-x:auto">
+      <div class="scrollwrap">
         <table>
           <thead><tr><th>Aktiv</th><th>Typ</th><th>Beschreibung</th><th>Von / An</th>
             <th class="num">Betrag</th><th>Intervall</th><th>Nächste Fälligkeit</th><th>Ende</th><th></th></tr></thead>
@@ -147,6 +200,20 @@
             <option value="GEPLANT">Geplant</option>
           </select>
         </div>
+        <div>
+          <label for="filterSteuer">Steuerlich</label>
+          <select id="filterSteuer">
+            <option value="">Alle</option>
+          </select>
+        </div>
+        <div>
+          <label for="filterKategorie">Kategorie</label>
+          <select id="filterKategorie"><option value="">Alle</option></select>
+        </div>
+        <div>
+          <label for="filterKonto">Konto</label>
+          <select id="filterKonto"><option value="">Alle</option></select>
+        </div>
         <div style="flex:1">
           <label for="filterText">Suche</label>
           <input type="text" id="filterText" placeholder="Beschreibung, Von/An, Notizen …">
@@ -155,7 +222,7 @@
           <button id="btnExcel" title="kassenbuch.csv im Datenordner – direkt mit Excel öffnenbar">📄 CSV-Info</button>
         </div>
       </div>
-      <div style="overflow-x:auto">
+      <div class="scrollwrap">
         <table id="listTable">
           <thead>
             <tr>
@@ -215,7 +282,7 @@
 
       <h3>Vermögensnachweis</h3>
       <p class="muted no-print">Anfangsbestand und effektiven Endbestand (Kontoauszug / Kassensturz) eintragen – Differenzen werden sofort sichtbar.</p>
-      <div style="overflow-x:auto">
+      <div class="scrollwrap">
         <table>
           <thead>
             <tr><th>Konto</th><th class="num">Anfangsbestand</th><th class="num">+ Einnahmen</th>
@@ -259,7 +326,7 @@
       <div id="steuerVerdict" class="verdict"></div>
 
       <h3>Steuerbare Erträge im Detail</h3>
-      <div style="overflow-x:auto">
+      <div class="scrollwrap">
         <table>
           <thead><tr><th>Datum</th><th>Beschreibung</th><th>Kategorie</th><th class="num">Betrag CHF</th><th>Beleg</th></tr></thead>
           <tbody id="steuerErtragBody"></tbody>
@@ -267,7 +334,7 @@
       </div>
 
       <h3>Direkt zuordenbare Aufwendungen im Detail</h3>
-      <div style="overflow-x:auto">
+      <div class="scrollwrap">
         <table>
           <thead><tr><th>Datum</th><th>Beschreibung</th><th>Kategorie</th><th class="num">Betrag CHF</th><th>Beleg</th></tr></thead>
           <tbody id="steuerDirektBody"></tbody>
@@ -276,11 +343,71 @@
     </div>
   </section>
 
+  <!-- ============ TAB 4: EINGANG (nur Server-Modus) ============ -->
+  <section id="viewEingang" class="hidden">
+    <div class="panel no-print">
+      <h2>📥 Rechnung einreichen</h2>
+      <p class="muted" style="margin-top:0">
+        Rechnung fotografieren oder als PDF anhängen – der Kassier prüft und bezahlt sie.
+      </p>
+      <div class="grid form">
+        <div class="col-3">
+          <label for="egBetrag">Betrag CHF</label>
+          <input type="number" id="egBetrag" step="0.05" min="0" placeholder="0.00">
+        </div>
+        <div class="col-4">
+          <label for="egZahlungsinfo">IBAN / Zahlungsinfo</label>
+          <input type="text" id="egZahlungsinfo" placeholder="z. B. CH93 0076 2011 6238 5295 7 oder Twint 079 …">
+        </div>
+        <div class="col-5">
+          <label for="egBeschreibung">Beschreibung</label>
+          <input type="text" id="egBeschreibung" placeholder="z. B. Getränkeeinkauf Sommerfest">
+        </div>
+        <div class="col-6">
+          <label>Rechnung / Quittung (Foto oder PDF)</label>
+          <button id="btnEgDatei" type="button">📎 Datei wählen / Foto</button>
+          <input type="file" id="egDateiInput" class="hidden" accept="application/pdf,image/*,.heic,.heif">
+          <span id="egDateiName" class="muted"></span>
+        </div>
+        <div class="col-6" style="text-align:right">
+          <button id="btnEingangSenden" class="primary">📤 Einreichen</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Meine eingereichten Rechnungen</h2>
+      <div class="scrollwrap">
+        <table>
+          <thead><tr><th>Eingereicht</th><th>Beschreibung</th><th class="num">Betrag</th><th>Status</th></tr></thead>
+          <tbody id="egEigeneBody"></tbody>
+        </table>
+      </div>
+      <p id="egEigeneEmpty" class="muted">Noch nichts eingereicht.</p>
+    </div>
+
+    <div class="panel nur-kassier hidden">
+      <h2>Offene Rechnungen (Kassier)</h2>
+      <div class="scrollwrap">
+        <table>
+          <thead><tr><th>Eingereicht</th><th>Von</th><th>Beschreibung</th><th class="num">Betrag</th>
+            <th>Zahlungsinfo</th><th>Datei</th><th></th></tr></thead>
+          <tbody id="egListeBody"></tbody>
+        </table>
+      </div>
+      <p id="egListeEmpty" class="muted">Keine offenen Rechnungen.</p>
+    </div>
+  </section>
+
 </main>
 
 <script src="js/basis.js"></script>
 <script src="js/speicher.js"></script>
+<script src="js/speicher-server.js"></script>
+<script src="js/anmeldung.js"></script>
 <script src="js/wiederkehrend.js"></script>
+<script src="js/verlauf.js"></script>
+<script src="js/eingang.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

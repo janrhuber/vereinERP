@@ -45,7 +45,7 @@
   button:hover { border-color: var(--accent); }
   button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
   button.primary:hover { filter: brightness(1.1); }
-  button.small { padding: 0.15rem 0.55rem; font-size: 0.82rem; }
+  button.small { padding: 0.25rem 0.65rem; font-size: 0.95rem; line-height: 1; }
   button.danger { color: var(--red); }
   input, select, textarea {
     font: inherit; padding: 0.4rem 0.55rem; border: 1px solid var(--border);
@@ -88,6 +88,9 @@
   .kpi.red { border-left: 4px solid var(--red); }
   .kpi.blue { border-left: 4px solid var(--blue); }
   .kpi.purple { border-left: 4px solid var(--accent); }
+  .kpi.prognose { border-left: 4px dashed var(--muted); }
+  .kpi.prognose .v { font-style: italic; color: var(--muted); }
+  .kpi.prognose .l { font-style: italic; }
   #status { font-size: 0.82rem; color: var(--muted); }
   #status.ok { color: var(--green); }
   #status.err { color: var(--red); }
@@ -108,6 +111,33 @@
   .calc .sum td { border-top: 2px solid var(--text); font-weight: 700; }
   .flexrow { display: flex; gap: 0.8rem; align-items: end; flex-wrap: wrap; }
   .flexrow > div { min-width: 140px; }
+  /* Scrollbarer Tabellen-Container: table darf NICHT auf 100% schrumpfen (sonst quetscht es
+     Spalten statt zu scrollen) – max-content lässt sie ihre natürliche Breite behalten. */
+  .scrollwrap { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: thin; scrollbar-color: var(--muted) var(--bg); }
+  .scrollwrap table { width: max-content; min-width: 100%; }
+  .scrollwrap::-webkit-scrollbar { height: 11px; }
+  .scrollwrap::-webkit-scrollbar-track { background: var(--bg); }
+  .scrollwrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; border: 2px solid var(--bg); }
+  .scrollwrap::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+  /* ================= Verlauf-Chart ================= */
+  .verlauf-wrap { position: relative; }
+  .verlauf-legende { display: flex; gap: 1.2rem; flex-wrap: wrap; margin-bottom: 0.5rem; font-size: 0.82rem; color: var(--muted); }
+  .verlauf-legende .dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 0.35rem; vertical-align: -1px; }
+  .verlauf-svg { width: 100%; height: auto; display: block; }
+  .verlauf-svg text { font-family: inherit; fill: var(--muted); font-size: 11px; }
+  .verlauf-grid { stroke: var(--border); stroke-width: 1; }
+  .verlauf-heute { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; }
+  .verlauf-crosshair { stroke: var(--text); stroke-width: 1; stroke-dasharray: 3 3; pointer-events: none; opacity: 0; }
+  .verlauf-tooltip {
+    position: absolute; pointer-events: none; opacity: 0; transition: opacity 0.08s;
+    background: var(--text); color: #fff; border-radius: 8px; padding: 0.5rem 0.65rem;
+    font-size: 0.8rem; line-height: 1.5; white-space: nowrap; transform: translate(-50%, -100%);
+    top: 0; left: 0; z-index: 5;
+  }
+  .verlauf-tooltip b { font-variant-numeric: tabular-nums; }
+  .verlauf-tooltip .row { display: flex; gap: 0.6rem; justify-content: space-between; }
+  .verlauf-tooltip .sw { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 0.35rem; }
   @media print {
     header, .tabs, .no-print, .hint { display: none !important; }
     body { background: #fff; }

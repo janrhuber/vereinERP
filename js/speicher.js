@@ -50,6 +50,7 @@ async function tryReconnect() {
 }
 
 async function readFileText(name) {
+  if (serverModus) return serverReadFileText(name);
   try {
     const fh = await dirHandle.getFileHandle(name);
     return await (await fh.getFile()).text();
@@ -57,6 +58,7 @@ async function readFileText(name) {
 }
 
 async function writeFileText(name, text) {
+  if (serverModus) return serverWriteFileText(name, text);
   const fh = await dirHandle.getFileHandle(name, { create: true });
   const w = await fh.createWritable();
   await w.write(text);
@@ -70,7 +72,7 @@ async function loadAll() {
   if (st) { try { settings = Object.assign(settings, JSON.parse(st)); } catch {} }
   if (!Array.isArray(settings.vorlagen)) settings.vorlagen = [];
   const created = await generateRecurring();
-  setStatus("✔ Verbunden: " + dirHandle.name + " (" + entries.length + " Buchungen" +
+  setStatus("✔ Verbunden: " + speicherName() + " (" + entries.length + " Buchungen" +
             (created ? ", " + created + " neu geplant" : "") + ")", "ok");
   $("startHint").classList.add("hidden");
   renderAll();
