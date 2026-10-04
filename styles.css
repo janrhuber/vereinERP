@@ -153,3 +153,7 @@
 body.startet main,
 body.startet #status,
 body.startet header button { visibility: hidden; }
+
+/* Versionsanzeige (Spec 012): Zwischenstand zwischen zwei Releases kursiv */
+#version { font-size: 0.75rem; white-space: nowrap; }
+#version.vorab { font-style: italic; }
