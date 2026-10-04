@@ -22,6 +22,7 @@ Zeile hier ergänzen.
 | 009 | [Kontostand & Verlauf](009-kontostand-verlauf.md) | Stand am Stichtag, Prognose, Chart | `js/app.js`, `js/verlauf.js` | Aktiv |
 | 010 | [Jahresrechnung](010-jahresrechnung.md) | Erfolgsrechnung, Vermögensnachweis für die GV | `js/app.js` | Aktiv |
 | 011 | [Steuerberechnung](011-steuerberechnung.md) | Reingewinn nach Art. 66 DBG / § 74 StG AG, Freigrenze | `js/app.js` | Aktiv |
+| 012 | [Versionsanzeige](012-versionsanzeige.md) | Release-Tag und Commit im App-Kopf, alpha zwischen Releases | `server/version.js` | Aktiv |
 
 ## Querschnitt
 
