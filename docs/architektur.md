@@ -94,6 +94,7 @@ Die Skripte werden in fester Reihenfolge per `<script>` geladen
 | `belege.js` | Belegablage `Belege/<Jahr>/` |
 | `eingang.js` | Rechnungseingang |
 | `hilfen.js` | `DATEN_DIR`, Dateinamen, Path-Traversal-Guard, `istExtern`, `nurIntern` |
+| `version.js` | Version aus `git describe` (Release-Tag, alpha dazwischen) für `/api/version` |
 | `benutzer-cli.js` | Benutzerverwaltung auf der Kommandozeile |
 | `test/` | Tests mit `node:test` gegen ein temporäres Datenverzeichnis |
 

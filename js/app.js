@@ -706,6 +706,18 @@ function startFolderMode() {
   tryReconnect();
 }
 
+/* Version des laufenden Stands (Spec 012). Nur im Server-Modus und nur
+   intern – von aussen liefert /api/version 404, dann bleibt das Feld leer. */
+async function zeigeVersion() {
+  try {
+    const r = await fetch("/api/version", { credentials: "same-origin" });
+    if (!r.ok) return;
+    const v = await r.json();
+    $("version").textContent = v.anzeige;
+    $("version").classList.toggle("vorab", !v.release);
+  } catch { /* Anzeige ist Komfort, kein Grund für einen Fehler */ }
+}
+
 function startServerMode(st) {
   serverModus = true;
   externerZugang = !!st.extern;
@@ -715,6 +727,7 @@ function startServerMode(st) {
   $("loginForm").onsubmit = login;
   $("btnLogout").onclick = logout;
   initEingangUI();
+  zeigeVersion();
   if (st.angemeldet && st.benutzer) anmeldungErfolgreich(st.benutzer);
   else zeigeLogin();
 }
