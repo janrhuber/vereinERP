@@ -7,7 +7,7 @@
 const path = require("path");
 const fs = require("fs");
 const express = require("express");
-const { DATEN_DIR } = require("./hilfen");
+const { DATEN_DIR, istExtern } = require("./hilfen");
 const auth = require("./auth");
 const daten = require("./daten");
 const belege = require("./belege");
@@ -41,6 +41,18 @@ app.use(auth.router);
 app.use(daten.router);
 app.use(belege.router);
 app.use(eingang.router);
+
+/* Von aussen gibt es nur die Einreichen-Seite (Spec 004). Die eigentliche
+   App – vereinERP.html und ihre Skripte – wird gar nicht erst ausgeliefert,
+   nicht bloss verdeckt. Zweite Schicht hinter der Nginx-Whitelist.
+   API-Routen sind oben schon behandelt; was hier ankommt, ist statisch. */
+const EXTERN_DATEIEN = new Set(["/einreichen.html", "/styles.css", "/js/einreichen.js"]);
+app.use((req, res, next) => {
+  if (!istExtern(req)) return next();
+  if (req.path === "/") return res.sendFile(path.join(REPO_ROOT, "einreichen.html"));
+  if (EXTERN_DATEIEN.has(req.path)) return next();
+  res.status(404).end();
+});
 
 /* Statische App ausliefern – Server-Code, Daten und Git-Interna nie */
 app.use((req, res, next) => {
