@@ -705,6 +705,7 @@ function startFolderMode() {
 
 function startServerMode(st) {
   serverModus = true;
+  externerZugang = !!st.extern;
   $("btnFolder").classList.add("hidden");
   $("btnExcel").classList.add("hidden");
   $("startHint").classList.add("hidden");

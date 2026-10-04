@@ -63,8 +63,29 @@ function pruefeEndung(dateiname) {
   return ext;
 }
 
+/* ================= Zugangsweg =================
+   Der öffentliche Nginx-vhost (kasse.schmalzpicker.ch) setzt "X-Zugang: extern"
+   und überschreibt dabei einen vom Client mitgeschickten Header – fälschbar
+   ist er also nicht. Beim direkten Zugriff aus dem Heimnetz auf Port 3000
+   fehlt er.
+
+   Von aussen gibt es nur das Einreichen. Alles, was Einträge zeigt oder
+   verändert, ist intern – auch die eigenen Einreichungen, weil sich alle
+   Mitglieder ein Konto teilen und sonst jeder die Rechnungen der anderen sähe.
+   Das ist die zweite Schicht hinter der Nginx-Pfadsperre. */
+function istExtern(req) {
+  return String(req.get("X-Zugang") || "").trim().toLowerCase() === "extern";
+}
+
+/* 404 statt 403: von aussen soll nicht erkennbar sein, dass es die Endpunkte gibt */
+function nurIntern(req, res, next) {
+  if (istExtern(req)) return res.status(404).end();
+  next();
+}
+
 module.exports = {
   DATEN_DIR, ERLAUBTE_ENDUNGEN, MAX_UPLOAD_BYTES,
   sanitizeFilename, belegBasisname, fixMulterName, etagFuer, atomicWriteFile,
   sichererPfad, eindeutigerDateiname, pruefeEndung,
+  istExtern, nurIntern,
 };

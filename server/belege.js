@@ -6,7 +6,7 @@ const express = require("express");
 const multer = require("multer");
 const {
   DATEN_DIR, MAX_UPLOAD_BYTES,
-  belegBasisname, fixMulterName, sichererPfad, eindeutigerDateiname, pruefeEndung,
+  belegBasisname, fixMulterName, sichererPfad, eindeutigerDateiname, pruefeEndung, nurIntern,
 } = require("./hilfen");
 const { requireKassier } = require("./auth");
 
@@ -15,7 +15,7 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX
 
 const router = express.Router();
 
-router.post("/api/belege", requireKassier, upload.single("datei"), async (req, res, next) => {
+router.post("/api/belege", nurIntern, requireKassier, upload.single("datei"), async (req, res, next) => {
   try {
     if (!req.file) return res.status(400).json({ fehler: "Keine Datei erhalten" });
     const jahr = parseInt(req.body.jahr, 10);
@@ -36,7 +36,7 @@ router.post("/api/belege", requireKassier, upload.single("datei"), async (req, r
   } catch (e) { next(e); }
 });
 
-router.get("/api/belege/:jahr/:name", requireKassier, (req, res) => {
+router.get("/api/belege/:jahr/:name", nurIntern, requireKassier, (req, res) => {
   let datei;
   try { datei = sichererPfad(BELEG_ROOT, req.params.jahr, req.params.name); }
   catch { return res.status(400).json({ fehler: "Ungültiger Pfad" }); }

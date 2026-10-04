@@ -3,7 +3,7 @@
 const path = require("path");
 const fsp = require("fs/promises");
 const express = require("express");
-const { DATEN_DIR, etagFuer, atomicWriteFile } = require("./hilfen");
+const { DATEN_DIR, etagFuer, atomicWriteFile, nurIntern } = require("./hilfen");
 const { requireKassier } = require("./auth");
 
 const CSV_PFAD = path.join(DATEN_DIR, "kassenbuch.csv");
@@ -13,7 +13,7 @@ const router = express.Router();
 
 /* CSV wird als opake Bytefolge behandelt (express.raw, nie express.text):
    der Text-Parser würde das BOM strippen und die Excel-Kompatibilität brechen. */
-router.get("/api/kassenbuch", requireKassier, async (req, res, next) => {
+router.get("/api/kassenbuch", nurIntern, requireKassier, async (req, res, next) => {
   try {
     const bytes = await fsp.readFile(CSV_PFAD);
     res.set("ETag", etagFuer(bytes));
@@ -24,7 +24,7 @@ router.get("/api/kassenbuch", requireKassier, async (req, res, next) => {
   }
 });
 
-router.put("/api/kassenbuch", requireKassier,
+router.put("/api/kassenbuch", nurIntern, requireKassier,
   express.raw({ type: ["text/csv", "text/plain"], limit: "5mb" }),
   async (req, res, next) => {
     try {
@@ -44,7 +44,7 @@ router.put("/api/kassenbuch", requireKassier,
     } catch (e) { next(e); }
   });
 
-router.get("/api/einstellungen", requireKassier, async (req, res, next) => {
+router.get("/api/einstellungen", nurIntern, requireKassier, async (req, res, next) => {
   try {
     const text = await fsp.readFile(SETTINGS_PFAD, "utf8");
     res.type("application/json").send(text);
@@ -54,7 +54,7 @@ router.get("/api/einstellungen", requireKassier, async (req, res, next) => {
   }
 });
 
-router.put("/api/einstellungen", requireKassier,
+router.put("/api/einstellungen", nurIntern, requireKassier,
   express.json({ limit: "1mb" }),
   async (req, res, next) => {
     try {

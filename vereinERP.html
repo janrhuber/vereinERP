@@ -351,6 +351,10 @@
         Rechnung fotografieren oder als PDF anhängen – der Kassier prüft und bezahlt sie.
       </p>
       <div class="grid form">
+        <div class="col-6">
+          <label for="egEinreicher">Dein Name *</label>
+          <input type="text" id="egEinreicher" autocomplete="name" placeholder="Vor- und Nachname">
+        </div>
         <div class="col-3">
           <label for="egBetrag">Betrag CHF</label>
           <input type="number" id="egBetrag" step="0.05" min="0" placeholder="0.00">
@@ -375,7 +379,7 @@
       </div>
     </div>
 
-    <div class="panel">
+    <div class="panel eg-intern">
       <h2>Meine eingereichten Rechnungen</h2>
       <div class="scrollwrap">
         <table>

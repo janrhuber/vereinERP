@@ -14,22 +14,26 @@ function initEingangUI() {
 }
 
 async function sendeEingang() {
+  const einreicher = $("egEinreicher").value.trim();
   const betrag = parseFloat($("egBetrag").value);
   const beschreibung = $("egBeschreibung").value.trim();
+  if (!einreicher) { alert("Bitte deinen Namen angeben – sonst weiss der Kassier nicht, wem er zurückzahlen soll."); return; }
   if (!isFinite(betrag) || betrag <= 0 || !beschreibung) {
     alert("Bitte Betrag und Beschreibung ausfüllen."); return;
   }
   if (!egDatei) { alert("Bitte Rechnung/Quittung anhängen (Foto oder PDF)."); return; }
   const fd = new FormData();
+  fd.append("einreicher", einreicher);
   fd.append("betrag", betrag);
   fd.append("zahlungsinfo", $("egZahlungsinfo").value.trim());
   fd.append("beschreibung", beschreibung);
   fd.append("datei", egDatei, egDatei.name);
   try { await apiFetch("/api/eingang", { method: "POST", body: fd }); }
   catch (e) { alert("Fehler beim Einreichen: " + e.message); return; }
+  /* Name bleibt stehen: wer mehrere Belege einreicht, muss ihn nicht neu tippen */
   $("egBetrag").value = ""; $("egZahlungsinfo").value = ""; $("egBeschreibung").value = "";
   egDatei = null; $("egDateiName").textContent = "";
-  await ladeEingang();
+  if (!externerZugang) await ladeEingang(); // von aussen gibt es keine Liste
   alert("✔ Rechnung eingereicht – der Kassier prüft und bezahlt sie.");
 }
 
@@ -64,7 +68,7 @@ function renderEingang() {
     for (const p of [...offene].reverse()) {
       const tr = document.createElement("tr");
       tr.innerHTML =
-        `<td>${datum(p.eingereicht)}</td><td>${escapeHtml(p.name)}</td>` +
+        `<td>${datum(p.eingereicht)}</td><td>${escapeHtml(p.einreicher || p.name)}</td>` +
         `<td>${escapeHtml(p.beschreibung)}</td><td class="num">${chf(p.betrag)}</td>` +
         `<td>${escapeHtml(p.zahlungsinfo)}</td>` +
         `<td><span class="beleg-link" data-egdatei="${p.id}">📄 ${escapeHtml((p.datei || "").split("/").pop())}</span></td>` +
@@ -94,7 +98,7 @@ async function uebernehmeEingang(id) {
   fillKategorien();
   $("fBetrag").value = p.betrag;
   $("fBeschreibung").value = p.beschreibung;
-  $("fVonAn").value = p.name;
+  $("fVonAn").value = p.einreicher || p.name;
   $("fNotizen").value = p.zahlungsinfo || "";
   $("fStatus").value = "GEPLANT";
   pendingFiles.push(file);
@@ -108,7 +112,7 @@ async function uebernehmeEingang(id) {
 async function loescheEingang(id) {
   const p = egListe.find(x => x.id === id);
   if (!p) return;
-  if (!confirm(`Eingang «${p.beschreibung}» (${chf(p.betrag)} CHF) von ${p.name} löschen?\nDie Datei wird mitgelöscht.`)) return;
+  if (!confirm(`Eingang «${p.beschreibung}» (${chf(p.betrag)} CHF) von ${p.einreicher || p.name} löschen?\nDie Datei wird mitgelöscht.`)) return;
   try { await apiFetch("/api/eingang/" + encodeURIComponent(id), { method: "DELETE" }); }
   catch (e) { alert("Fehler: " + e.message); return; }
   await ladeEingang();

@@ -8,7 +8,7 @@ const session = require("express-session");
 const FileStore = require("session-file-store")(session);
 const bcrypt = require("bcryptjs");
 const rateLimit = require("express-rate-limit");
-const { DATEN_DIR } = require("./hilfen");
+const { DATEN_DIR, istExtern } = require("./hilfen");
 
 const BENUTZER_DATEI = path.join(DATEN_DIR, "benutzer.json");
 /* Dummy-Hash: bcrypt-Vergleich läuft auch bei unbekanntem Namen → kein Timing-Leck */
@@ -79,7 +79,8 @@ const router = express.Router();
 
 router.get("/api/status", (req, res) => {
   const b = req.session && req.session.benutzer;
-  res.json({ server: true, angemeldet: !!b, benutzer: b || null });
+  /* "extern": das Frontend zeigt dann nur das Einreichen-Formular */
+  res.json({ server: true, angemeldet: !!b, benutzer: b || null, extern: istExtern(req) });
 });
 
 router.post("/api/login", loginLimit, express.json({ limit: "10kb" }), (req, res) => {

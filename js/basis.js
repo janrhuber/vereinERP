@@ -57,6 +57,7 @@ let serverModus = false;     // true = App läuft gegen das Server-Backend statt
 let currentUser = null;      // { name, rolle } nach Login (nur Server-Modus)
 let csvEtag = null;          // ETag der zuletzt gelesenen kassenbuch.csv (Schutz vor verlorenen Updates)
 let aktiveEingangId = null;  // Eingang-Posten, der gerade in eine Buchung umgewandelt wird
+let externerZugang = false;  // über kasse.schmalzpicker.ch erreicht → nur Einreichen-Formular
 
 /* ================= Hilfsfunktionen ================= */
 const $ = id => document.getElementById(id);

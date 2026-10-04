@@ -46,6 +46,18 @@ async function anmeldungErfolgreich(benutzer) {
 }
 
 async function applyRole() {
+  /* Von aussen gibt es nur das Formular – für alle Konten, auch den Kassier.
+     Keine Tabs, keine Liste, keine vergangenen Einreichungen. Das Backend
+     sperrt die Endpunkte ohnehin; hier geht es darum, dass gar nicht erst
+     eine Oberfläche erscheint, die ins Leere läuft. */
+  if (externerZugang) {
+    document.querySelector(".tabs").classList.add("hidden");
+    document.querySelectorAll(".nur-kassier, .eg-intern").forEach(el => el.classList.add("hidden"));
+    showTab("Eingang");
+    setStatus("Rechnung einreichen", "ok");
+    return;
+  }
+
   const kassier = currentUser.rolle === "kassier";
   document.querySelectorAll(".nur-kassier").forEach(el => el.classList.toggle("hidden", !kassier));
   $("tabErfassen").classList.toggle("hidden", !kassier);

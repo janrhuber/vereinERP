@@ -8,6 +8,7 @@ const multer = require("multer");
 const {
   DATEN_DIR, MAX_UPLOAD_BYTES,
   sanitizeFilename, fixMulterName, atomicWriteFile, sichererPfad, eindeutigerDateiname, pruefeEndung,
+  nurIntern,
 } = require("./hilfen");
 const { requireAuth, requireKassier } = require("./auth");
 
@@ -39,6 +40,10 @@ router.post("/api/eingang", requireAuth, upload.single("datei"), async (req, res
     const betrag = parseFloat(req.body.betrag);
     const beschreibung = String(req.body.beschreibung || "").trim();
     const zahlungsinfo = String(req.body.zahlungsinfo || "").trim().slice(0, 200);
+    /* Alle Mitglieder teilen sich ein Konto – der Kontoname sagt also nicht,
+       wem das Geld zurückzuzahlen ist. Darum fragt das Formular nach dem Namen. */
+    const einreicher = String(req.body.einreicher || "").trim().slice(0, 80);
+    if (!einreicher) return res.status(400).json({ fehler: "Bitte deinen Namen angeben" });
     if (!isFinite(betrag) || betrag <= 0 || betrag > 1000000) {
       return res.status(400).json({ fehler: "Ungültiger Betrag" });
     }
@@ -51,7 +56,7 @@ router.post("/api/eingang", requireAuth, upload.single("datei"), async (req, res
     /* Name kommt aus der Session, nie aus dem Formular */
     const name = req.session.benutzer.name;
     await fsp.mkdir(EINGANG_DIR, { recursive: true });
-    const base = sanitizeFilename(name) + "_" + sanitizeFilename(beschreibung) + "_" +
+    const base = sanitizeFilename(einreicher) + "_" + sanitizeFilename(beschreibung) + "_" +
                  sanitizeFilename(path.basename(original, path.extname(original)));
     const dateiname = eindeutigerDateiname(EINGANG_DIR, base, ext);
     await fsp.writeFile(path.join(EINGANG_DIR, dateiname), req.file.buffer);
@@ -59,7 +64,8 @@ router.post("/api/eingang", requireAuth, upload.single("datei"), async (req, res
     const posten = {
       id: crypto.randomBytes(8).toString("hex"),
       eingereicht: new Date().toISOString(),
-      name,
+      name,                 // Konto, mit dem eingereicht wurde
+      einreicher,           // Person laut Formular – an sie geht die Rückzahlung
       betrag: Math.round(betrag * 100) / 100,
       zahlungsinfo,
       beschreibung: beschreibung.slice(0, 200),
@@ -72,11 +78,11 @@ router.post("/api/eingang", requireAuth, upload.single("datei"), async (req, res
       liste.push(posten);
       await speichereListe(liste);
     });
-    res.json(posten);
+    res.json({ ok: true });
   } catch (e) { next(e); }
 });
 
-router.get("/api/eingang", requireAuth, async (req, res, next) => {
+router.get("/api/eingang", nurIntern, requireAuth, async (req, res, next) => {
   try {
     const b = req.session.benutzer;
     let liste = await ladeListe();
@@ -85,7 +91,7 @@ router.get("/api/eingang", requireAuth, async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-router.get("/api/eingang/datei/:id", requireAuth, async (req, res, next) => {
+router.get("/api/eingang/datei/:id", nurIntern, requireAuth, async (req, res, next) => {
   try {
     const b = req.session.benutzer;
     const posten = (await ladeListe()).find(p => p.id === req.params.id);
@@ -102,7 +108,7 @@ router.get("/api/eingang/datei/:id", requireAuth, async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-router.post("/api/eingang/:id/erledigt", requireKassier, express.json({ limit: "10kb" }), async (req, res, next) => {
+router.post("/api/eingang/:id/erledigt", nurIntern, requireKassier, express.json({ limit: "10kb" }), async (req, res, next) => {
   try {
     const ok = await mitSchreibsperre(async () => {
       const liste = await ladeListe();
@@ -118,7 +124,7 @@ router.post("/api/eingang/:id/erledigt", requireKassier, express.json({ limit: "
   } catch (e) { next(e); }
 });
 
-router.delete("/api/eingang/:id", requireKassier, async (req, res, next) => {
+router.delete("/api/eingang/:id", nurIntern, requireKassier, async (req, res, next) => {
   try {
     const geloescht = await mitSchreibsperre(async () => {
       const liste = await ladeListe();
