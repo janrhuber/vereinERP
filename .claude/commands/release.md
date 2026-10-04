@@ -17,7 +17,7 @@ Erstelle das Release $ARGUMENTS. Jeder Schritt muss gelingen, bevor der nächste
 5. Version in `server/package.json` setzen.
 6. Changelog: **Unreleased** → `## [X.Y.Z] – <heutiges Datum>`, neues leeres **Unreleased** darüber.
 7. Haben sich seit dem letzten Tag CSS- oder JS-Dateien geändert (`git diff --name-only <letzter-tag>..develop -- '*.css' 'js/'`), aber `?v=` in `vereinERP.html` / `einreichen.html` nicht? Dann auf heutiges Datum hochzählen.
-8. Commit `chore(release): vX.Y.Z`.
+8. Commit `chore(release): vX.Y.Z`. Gibt es nichts zu ändern (Version, Changelog und `?v=` schon vorbereitet), entfällt er.
 
 **Zusammenführen und taggen**
 
@@ -32,7 +32,7 @@ Erstelle das Release $ARGUMENTS. Jeder Schritt muss gelingen, bevor der nächste
 14. **Zuerst die App**: `.\scripts\deploy.ps1 -Service vereinerp -SkipTerraform`. **Nie** mit `2>&1` aufrufen.
 15. **Danach der Proxy**, falls in 13 Änderungen vorlagen: `.\scripts\deploy.ps1 -Service nginx-proxy -SkipTerraform`. Die umgekehrte Reihenfolge bricht die öffentliche Seite.
 
-**Verifizieren** – Ergebnis jeder Prüfung zeigen
+**Verifizieren** – Ergebnis jeder Prüfung zeigen. Am besten mit `curl -s -o /dev/null -w '%{http_code}'` in Bash. In PowerShell aufpassen: Variablennamen unterscheiden nicht zwischen Gross- und Kleinschreibung, `$p` überschreibt `$P` (so beim Release v1.0.0 passiert). Ein `ERR` ist erst ein Befund, wenn die Prüfung selbst stimmt.
 
 16. Container läuft den Tag: `ssh root@192.168.1.16 "cd /var/www/vereinerp && git describe --tags"`; `pm2 list` zeigt `vereinerp` online.
 17. Öffentlich (`https://kasse.schmalzpicker.ch`): `/api/status` mit `extern: true`; `/` ist die Einreichen-Seite; `/vereinERP.html`, `/js/app.js`, `GET /api/eingang`, `/api/kassenbuch` → 404; `POST /api/eingang` ohne Login → 401.
