@@ -42,6 +42,7 @@ node server/index.js              # vom Repo-Root aus; App unter http://localhos
 
 ```
 vereinERP.html          ← Einstiegspunkt (lokal öffnen oder vom Server ausgeliefert)
+einreichen.html         ← öffentliche Seite: nur Rechnung einreichen (Server-Modus, von aussen)
 styles.css              ← Layout
 js/basis.js             ← Konstanten, Kategorien, CSV-Logik, Modus-Zustand
 js/speicher.js          ← Dateizugriff Ordner-Modus (File System Access API)
@@ -50,8 +51,11 @@ js/anmeldung.js         ← Login & Rollen (nur Server-Modus)
 js/wiederkehrend.js     ← wiederkehrende Buchungen, Beleg-Ablage
 js/eingang.js           ← Rechnungs-Eingang (nur Server-Modus)
 js/app.js               ← Formular, Auswertungen, Bedienung, Modus-Erkennung
-server/                 ← Node.js/Express-Backend (index.js, auth, daten, belege, eingang)
+js/einreichen.js        ← Logik der Einreichen-Seite (eigenständig)
+server/                 ← Node.js/Express-Backend (index.js startet app.js; auth, daten, belege, eingang)
 server/benutzer-cli.js  ← Benutzerverwaltung (add/passwort/entfernen/liste)
+server/test/            ← Tests (cd server && npm test)
+docs/                   ← Architektur, Betrieb, Specs pro Feature
 ```
 
 Die Dateien gehören zusammen – beim Weitergeben/Verschieben immer den ganzen Ordner nehmen.
@@ -151,6 +155,10 @@ Hinweise Server-Modus: HEIC-Fotos (iPhone) werden gespeichert und verlinkt, im
 Desktop-Browser aber meist heruntergeladen statt angezeigt. Arbeiten zwei offene Fenster
 gleichzeitig am Kassenbuch, gewinnt das erste – das zweite bekommt beim Speichern eine
 Konfliktmeldung und muss neu laden (bewusst einfach gehalten, es gibt einen Kassier).
+
+## Dokumentation
+
+Architektur, Betrieb und eine Spec pro Feature: [docs/](docs/README.md).
 
 ## Lizenz
 
