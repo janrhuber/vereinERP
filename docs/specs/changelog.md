@@ -6,6 +6,8 @@ nach [SemVer](https://semver.org/lang/de/). Neue Einträge zuerst unter
 
 ## [Unreleased]
 
+## [1.1.0] – 2026-10-04
+
 ### Added
 - Versionsanzeige im Kopf der App (intern): `v1.1.0 (hash)` auf einem Release,
   `v1.1.1-alpha.N (hash)` für Stände dazwischen. Öffentliche Seite zeigt keine Version.
