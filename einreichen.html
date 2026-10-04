@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="de-CH">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Rechnung einreichen – Schmalzpicker</title>
+<link rel="stylesheet" href="styles.css?v=20261004">
+<style>
+  /* Nur diese Seite: schmal, eine Spalte – gemacht fürs Handy */
+  main.einreichen { max-width: 30rem; margin: 1.5rem auto; padding: 0 1rem; }
+  main.einreichen .grid.form { grid-template-columns: 1fr; }
+  main.einreichen input, main.einreichen button { width: 100%; box-sizing: border-box; }
+  main.einreichen .zeile { display: flex; gap: .6rem; align-items: center; }
+  main.einreichen .zeile button { width: auto; flex: none; }
+  #fehler { color: var(--red); min-height: 1.2em; }
+  #erfolg { background: var(--green-soft); border-left: 4px solid var(--green); padding: .8rem 1rem; }
+</style>
+</head>
+<body class="startet">
+
+<!--
+  Öffentliche Seite unter kasse.schmalzpicker.ch.
+  Von aussen wird ausschliesslich diese Seite ausgeliefert (Nginx und App
+  lassen nur sie, styles.css und js/einreichen.js durch). Die eigentliche
+  Vereinskasse (vereinERP.html) ist nur im Heimnetz erreichbar.
+  Spec: docs/specs/004-einreichen-seite.md
+-->
+
+<header>
+  <h1>verein<span>ERP</span> <span class="muted" style="font-weight:400">· Rechnung einreichen</span></h1>
+  <div class="spacer"></div>
+  <button id="btnLogout" class="hidden">Abmelden</button>
+</header>
+
+<main class="einreichen">
+
+  <section id="viewLogin" class="hidden">
+    <div class="panel">
+      <h2>Anmelden</h2>
+      <form id="loginForm" class="grid form">
+        <div>
+          <label for="loginName">Name</label>
+          <input type="text" id="loginName" autocomplete="username" required>
+        </div>
+        <div>
+          <label for="loginPasswort">Passwort</label>
+          <input type="password" id="loginPasswort" autocomplete="current-password" required>
+        </div>
+        <button type="submit" class="primary">Anmelden</button>
+      </form>
+    </div>
+  </section>
+
+  <section id="viewFormular" class="hidden">
+    <div id="erfolg" class="hidden" role="status">
+      ✔ Rechnung eingereicht – der Kassier prüft und bezahlt sie.
+    </div>
+
+    <div class="panel">
+      <h2>Rechnung einreichen</h2>
+      <p class="muted" style="margin-top:0">
+        Rechnung fotografieren oder als PDF anhängen. Der Kassier zahlt dir den Betrag zurück.
+      </p>
+      <form id="formular" class="grid form">
+        <div>
+          <label for="einreicher">Dein Name *</label>
+          <input type="text" id="einreicher" autocomplete="name" placeholder="Vor- und Nachname" required>
+        </div>
+        <div>
+          <label for="betrag">Betrag CHF *</label>
+          <input type="number" id="betrag" step="0.05" min="0.05" inputmode="decimal" placeholder="0.00" required>
+        </div>
+        <div>
+          <label for="beschreibung">Wofür? *</label>
+          <input type="text" id="beschreibung" placeholder="z. B. Getränkeeinkauf Sommerfest" required>
+        </div>
+        <div>
+          <label for="zahlungsinfo">IBAN oder Twint-Nummer</label>
+          <input type="text" id="zahlungsinfo" autocomplete="off" placeholder="wohin der Kassier zurückzahlt">
+        </div>
+        <div>
+          <label for="datei">Rechnung / Quittung *</label>
+          <input type="file" id="datei" accept="application/pdf,image/*,.heic,.heif" required>
+        </div>
+        <button type="submit" id="btnSenden" class="primary">Einreichen</button>
+      </form>
+    </div>
+  </section>
+
+  <p id="fehler" role="alert"></p>
+</main>
+
+<script src="js/einreichen.js?v=20261004"></script>
+</body>
+</html>
