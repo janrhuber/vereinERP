@@ -673,6 +673,9 @@ function wireCommonUI() {
   $("tabErfassen").onclick = () => showTab("Erfassen");
   $("tabJahr").onclick = () => { showTab("Jahr"); renderJahr(); };
   $("tabSteuer").onclick = () => { showTab("Steuer"); renderSteuer(); };
+  /* Beim Öffnen neu laden – sonst erscheinen Einreichungen, die seit dem
+     Anmelden eingegangen sind, erst nach einem Seiten-Reload. */
+  $("tabEingang").onclick = () => { showTab("Eingang"); ladeEingang(); };
   $("jahrSelect").onchange = renderJahr;
   $("steuerJahr").onchange = renderSteuer;
   $("vereinName").onchange = async () => {
